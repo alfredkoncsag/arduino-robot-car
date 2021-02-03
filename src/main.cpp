@@ -1,11 +1,6 @@
 #include <Arduino.h>
 #include "IRremote.h"
 
-int receiver = 9;
-
-IRrecv irrecv(receiver);
-decode_results results;
-
 class Motor
 {
 
@@ -19,6 +14,10 @@ class Motor
       directionPin1 = dPin1;
       directionPin2 = dPin2;
     };
+
+    int isRun() {
+      return true;
+    }
 
     //Method to drive the motor 0~255 driving forward. -1~-255 driving backward
     void Drive(int speed)
@@ -42,21 +41,38 @@ class Motor
     }
 };
 
-int motor1pin1 = 2;
-int motor1pin2 = 3;
 
-int motor2pin1 = 4;
-int motor2pin2 = 5;
+#define echoPin 2
+#define trigPin 3
+
+#define motor1pin1 4
+#define motor1pin2 5
+
+#define motor2pin1 6
+#define motor2pin2 7
+
+// defines variables
+long duration;
+int distance;
+
+int receiver = 9;
+
+IRrecv irrecv(receiver);
+decode_results results;
 
 Motor leftMotor = Motor(motor1pin2, motor1pin1);
 Motor rightMotor = Motor(motor2pin2, motor2pin1);
 
-
 void setup()
 {
   Serial.begin(9600);
+
   Serial.println("IR Receiver Button Decode");
   irrecv.enableIRIn();
+
+  // Setup ultrasonic sensor
+  pinMode(trigPin, OUTPUT);
+  pinMode(echoPin, INPUT);
 
   pinMode(motor1pin1, OUTPUT);
   pinMode(motor1pin2, OUTPUT);
@@ -125,8 +141,45 @@ void translateIR()
 
 void loop()
 {
-  if (irrecv.decode(&results))
+  digitalWrite(trigPin, LOW);
+  delayMicroseconds(2);
+  digitalWrite(trigPin, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(trigPin, LOW);
 
+  duration = pulseIn(echoPin, HIGH);
+  // Calculating the distance
+  distance = duration * 0.034 / 2; // Speed of sound wave divided by 2 (go and back)
+
+  Serial.print("Distance: ");
+  Serial.print(distance);
+  Serial.println(" cm");
+
+    if(distance < 30){
+      Serial.println("Danger!!!");
+      Serial.println("Stop motors...");
+  
+      leftMotor.Drive(0);
+      rightMotor.Drive(0);
+  
+      delay(1000);
+  
+      Serial.println("Turn back the car...");
+  
+      leftMotor.Drive(1);
+      rightMotor.Drive(-1);
+  
+      delay(300);
+  
+      Serial.println("Go forrward");
+  
+      leftMotor.Drive(1);
+      rightMotor.Drive(1);
+  
+  
+    }
+
+  if (irrecv.decode(&results))
   {
     translateIR();
     irrecv.resume();
