@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include <Servo.h>
 #include "IRremote.h"
 
 class Motor
@@ -57,11 +58,17 @@ int distance;
 
 int receiver = 9;
 
+
+int pos = 90;    // variable to store the servo position
+
 IRrecv irrecv(receiver);
 decode_results results;
 
 Motor leftMotor = Motor(motor1pin2, motor1pin1);
 Motor rightMotor = Motor(motor2pin2, motor2pin1);
+
+Servo myservo;  // create servo object to control a servo
+// twelve servo objects can be created on most boards
 
 void setup()
 {
@@ -84,6 +91,10 @@ void setup()
   digitalWrite(motor1pin2, LOW);
   digitalWrite(motor2pin1, LOW);
   digitalWrite(motor2pin2, LOW);
+
+  myservo.attach(8);  // attaches the servo on pin 9 to the servo object
+
+
 }
 void translateIR()
 
@@ -139,8 +150,7 @@ void translateIR()
   delay(500);
 }
 
-void loop()
-{
+void calcDistance() {
   digitalWrite(trigPin, LOW);
   delayMicroseconds(2);
   digitalWrite(trigPin, HIGH);
@@ -154,30 +164,76 @@ void loop()
   Serial.print("Distance: ");
   Serial.print(distance);
   Serial.println(" cm");
+}
 
-    if(distance < 30){
-      Serial.println("Danger!!!");
-      Serial.println("Stop motors...");
-  
-      leftMotor.Drive(0);
-      rightMotor.Drive(0);
-  
-      delay(1000);
-  
-      Serial.println("Turn back the car...");
-  
-      leftMotor.Drive(1);
-      rightMotor.Drive(-1);
-  
-      delay(300);
-  
-      Serial.println("Go forrward");
-  
-      leftMotor.Drive(1);
-      rightMotor.Drive(1);
-  
-  
-    }
+void loop()
+{
+
+  calcDistance();
+
+  if (distance < 30) {
+    Serial.println("Danger!!!");
+    Serial.println("Stop motors...");
+
+    leftMotor.Drive(0);
+    rightMotor.Drive(0);
+
+    delay(1000);
+
+    Serial.println("Turn back the car...");
+
+    leftMotor.Drive(1);
+    rightMotor.Drive(-1);
+
+    delay(300);
+
+    Serial.println("Go forrward");
+
+    leftMotor.Drive(1);
+    rightMotor.Drive(1);
+
+
+  }
+  //  if (distance < 20) {
+  //    Serial.println("Danger!!!");
+  //    Serial.println("Stop motors...");
+  //
+  //    leftMotor.Drive(0);
+  //    rightMotor.Drive(0);
+  //
+  //    Serial.println("Map location...");
+  //
+  //    int maxPos = 0;
+  //    int max = 0;
+  //
+  //    for (pos = 0; pos <= 180; pos += 1) {
+  //      // in steps of 1 degree
+  //      myservo.write(pos);              // tell servo to go to position in variable 'pos'
+  //      delay(15);                       // waits 15ms for the servo to reach the position
+  //      calcDistance();
+  //
+  //      if (distance > max) {
+  //        max = distance;
+  //        maxPos = pos;
+  //      }
+  //    }
+  //
+  //    for (pos = 180; pos >= 0; pos -= 1) { // goes from 180 degrees to 0 degrees
+  //      myservo.write(pos);              // tell servo to go to position in variable 'pos'
+  //      delay(15);                       // waits 15ms for the servo to reach the position
+  //      calcDistance();
+  //      if (distance > max) {
+  //        max = distance;
+  //        maxPos = pos;
+  //      }
+  //    }
+  //
+  //    myservo.write(maxPos);              // tell servo to go to position in variable 'pos'
+  //    delay(1000);                       // waits 15ms for the servo to reach the position
+  //    Serial.println("MAX");
+  //    Serial.println(max);
+  //    Serial.println(maxPos);
+  //  }
 
   if (irrecv.decode(&results))
   {
