@@ -1,73 +1,38 @@
 #include <Arduino.h>
+#include <CarMotor.h>
 #include <Servo.h>
 #include "IRremote.h"
 
-class Motor
-{
-
-    int directionPin1;
-    int directionPin2;
-
-  public:
-    //Method to define the motor pins
-    Motor(int dPin1, int dPin2)
-    {
-      directionPin1 = dPin1;
-      directionPin2 = dPin2;
-    };
-
-    int isRun() {
-      return true;
-    }
-
-    //Method to drive the motor 0~255 driving forward. -1~-255 driving backward
-    void Drive(int speed)
-    {
-
-      switch (speed)
-      {
-        case 0:
-          digitalWrite(directionPin1, LOW);
-          digitalWrite(directionPin2, LOW);
-          break;
-        case 1:
-          digitalWrite(directionPin1, LOW);
-          digitalWrite(directionPin2, HIGH);
-          break;
-        case -1:
-          digitalWrite(directionPin1, HIGH);
-          digitalWrite(directionPin2, LOW);
-          break;
-      }
-    }
-};
-
-
+// Ultrasonic sendor pins
 #define echoPin 2
 #define trigPin 3
 
+//left motor pins
 #define motor1pin1 4
 #define motor1pin2 5
 
+//right motor pins
 #define motor2pin1 6
 #define motor2pin2 7
+
+//servo pin
+#define servoPin 8
+
+//IR reciver pin
+#define receiver 9
 
 // defines variables
 long duration;
 int distance;
-
-int receiver = 9;
-
-
-int pos = 90;    // variable to store the servo position
+int pos = 0; // variable to store the servo position
 
 IRrecv irrecv(receiver);
 decode_results results;
 
-Motor leftMotor = Motor(motor1pin2, motor1pin1);
-Motor rightMotor = Motor(motor2pin2, motor2pin1);
+CarMotor leftMotor = CarMotor(motor1pin2, motor1pin1);
+CarMotor rightMotor = CarMotor(motor2pin2, motor2pin1);
 
-Servo myservo;  // create servo object to control a servo
+Servo myservo; // create servo object to control a servo
 // twelve servo objects can be created on most boards
 
 void setup()
@@ -77,10 +42,13 @@ void setup()
   Serial.println("IR Receiver Button Decode");
   irrecv.enableIRIn();
 
+  myservo.attach(servoPin); // attaches the servo on pin 9 to the servo object
+
   // Setup ultrasonic sensor
   pinMode(trigPin, OUTPUT);
   pinMode(echoPin, INPUT);
 
+  //Set initial motor pins
   pinMode(motor1pin1, OUTPUT);
   pinMode(motor1pin2, OUTPUT);
   pinMode(motor2pin1, OUTPUT);
@@ -92,9 +60,6 @@ void setup()
   digitalWrite(motor2pin1, LOW);
   digitalWrite(motor2pin2, LOW);
 
-  myservo.attach(8);  // attaches the servo on pin 9 to the servo object
-
-
 }
 void translateIR()
 
@@ -105,52 +70,53 @@ void translateIR()
 
   {
 
-    case 10042053:
-      Serial.println("FORWARD");
+  case 10042053:
+    Serial.println("FORWARD");
 
-      leftMotor.Drive(1);
-      rightMotor.Drive(1);
-      break;
+    leftMotor.Drive(1);
+    rightMotor.Drive(1);
+    break;
 
-    case 10091013:
-      Serial.println("RIGHT");
+  case 10091013:
+    Serial.println("RIGHT");
 
-      leftMotor.Drive(1);
-      rightMotor.Drive(0);
-      break;
+    leftMotor.Drive(1);
+    rightMotor.Drive(0);
+    break;
 
-    case 10058373:
-      Serial.println("LEFT");
+  case 10058373:
+    Serial.println("LEFT");
 
-      leftMotor.Drive(0);
-      rightMotor.Drive(1);
-      break;
+    leftMotor.Drive(0);
+    rightMotor.Drive(1);
+    break;
 
-    case 10074693:
-      Serial.println("BACK");
+  case 10074693:
+    Serial.println("BACK");
 
-      leftMotor.Drive(-1);
-      rightMotor.Drive(-1);
-      break;
+    leftMotor.Drive(-1);
+    rightMotor.Drive(-1);
+    break;
 
-    case 10031343:
-      Serial.println("OK");
+  case 10031343:
+    Serial.println("OK");
 
-      leftMotor.Drive(1);
-      rightMotor.Drive(-1);
-      break;
+    leftMotor.Drive(1);
+    rightMotor.Drive(-1);
+    break;
 
-    default:
-      Serial.println("OTHER BTN");
+  default:
+    Serial.println("OTHER BTN");
 
-      leftMotor.Drive(0);
-      rightMotor.Drive(0);
+    leftMotor.Drive(0);
+    rightMotor.Drive(0);
   }
 
   delay(500);
 }
 
-void calcDistance() {
+void calcDistance()
+{
   digitalWrite(trigPin, LOW);
   delayMicroseconds(2);
   digitalWrite(trigPin, HIGH);
@@ -171,7 +137,8 @@ void loop()
 
   calcDistance();
 
-  if (distance < 30) {
+  if (distance < 30)
+  {
     Serial.println("Danger!!!");
     Serial.println("Stop motors...");
 
@@ -191,8 +158,6 @@ void loop()
 
     leftMotor.Drive(1);
     rightMotor.Drive(1);
-
-
   }
   //  if (distance < 20) {
   //    Serial.println("Danger!!!");
@@ -203,7 +168,7 @@ void loop()
   //
   //    Serial.println("Map location...");
   //
-  //    int maxPos = 0;
+  //    int maxPos = 0;Q
   //    int max = 0;
   //
   //    for (pos = 0; pos <= 180; pos += 1) {
