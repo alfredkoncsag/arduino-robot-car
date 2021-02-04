@@ -1,7 +1,49 @@
 #include <Arduino.h>
-#include <CarMotor.h>
+
 #include <Servo.h>
 #include "IRremote.h"
+
+class CarMotor
+{
+
+private:
+  int directionPin1;
+  int directionPin2;
+
+public:
+  //Method to define the motor pins
+  CarMotor(int dPin1, int dPin2)
+  {
+    directionPin1 = dPin1;
+    directionPin2 = dPin2;
+  };
+
+  int isRun()
+  {
+    return digitalRead(directionPin1) + digitalRead(directionPin2) != 0;
+  }
+
+  //Method to drive the motor 0~255 driving forward. -1~-255 driving backward
+  void Drive(int speed)
+  {
+
+    switch (speed)
+    {
+    case 0:
+      digitalWrite(directionPin1, LOW);
+      digitalWrite(directionPin2, LOW);
+      break;
+    case 1:
+      digitalWrite(directionPin1, LOW);
+      digitalWrite(directionPin2, HIGH);
+      break;
+    case -1:
+      digitalWrite(directionPin1, HIGH);
+      digitalWrite(directionPin2, LOW);
+      break;
+    }
+  }
+};
 
 // Ultrasonic sendor pins
 #define echoPin 2
@@ -59,7 +101,6 @@ void setup()
   digitalWrite(motor1pin2, LOW);
   digitalWrite(motor2pin1, LOW);
   digitalWrite(motor2pin2, LOW);
-
 }
 void translateIR()
 
@@ -110,6 +151,7 @@ void translateIR()
 
     leftMotor.Drive(0);
     rightMotor.Drive(0);
+    Serial.println(results.value);
   }
 
   delay(500);
@@ -137,7 +179,10 @@ void loop()
 
   calcDistance();
 
-  if (distance < 30)
+  Serial.println(leftMotor.isRun());
+  Serial.println(rightMotor.isRun());
+
+  if (distance < 20)
   {
     Serial.println("Danger!!!");
     Serial.println("Stop motors...");

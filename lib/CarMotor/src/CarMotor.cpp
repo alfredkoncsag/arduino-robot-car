@@ -1,4 +1,3 @@
-#include <Arduino.h>
 #include <CarMotor.h>
 
 int CarMotor::isRun()
