@@ -1,253 +1,232 @@
-#include <Arduino.h>
-
-#include <Servo.h>
-#include "IRremote.h"
-
-class CarMotor
-{
-
-private:
-  int directionPin1;
-  int directionPin2;
-
-public:
-  //Method to define the motor pins
-  CarMotor(int dPin1, int dPin2)
-  {
-    directionPin1 = dPin1;
-    directionPin2 = dPin2;
-  };
-
-  int isRun()
-  {
-    return digitalRead(directionPin1) + digitalRead(directionPin2) != 0;
-  }
-
-  //Method to drive the motor 0~255 driving forward. -1~-255 driving backward
-  void Drive(int speed)
-  {
-
-    switch (speed)
-    {
-    case 0:
-      digitalWrite(directionPin1, LOW);
-      digitalWrite(directionPin2, LOW);
-      break;
-    case 1:
-      digitalWrite(directionPin1, LOW);
-      digitalWrite(directionPin2, HIGH);
-      break;
-    case -1:
-      digitalWrite(directionPin1, HIGH);
-      digitalWrite(directionPin2, LOW);
-      break;
-    }
-  }
-};
-
-// Ultrasonic sendor pins
-#define echoPin 2
-#define trigPin 3
-
-//left motor pins
-#define motor1pin1 4
-#define motor1pin2 5
-
-//right motor pins
-#define motor2pin1 6
-#define motor2pin2 7
+#include <Servo.h> //Servo motor library
+#include <IRremote.h>
 
 //servo pin
 #define servoPin 8
 
-//IR reciver pin
-#define receiver 9
+const int LeftForward = 4; // L298N control pins
+const int LeftBackward = 5;
+const int RightForward = 6;
+const int RightBackward = 7;
 
-// defines variables
-long duration;
-int distance;
-int pos = 0; // variable to store the servo position
+const int IRreceiver = 9;
 
-IRrecv irrecv(receiver);
+IRrecv irrecv(IRreceiver);
 decode_results results;
 
-CarMotor leftMotor = CarMotor(motor1pin2, motor1pin1);
-CarMotor rightMotor = CarMotor(motor2pin2, motor2pin1);
+#define trigPin A1 //sensor pins - analog input 1
+#define echoPin A2 //analog input 2
+#define maximum_distance 200
 
-Servo myservo; // create servo object to control a servo
-// twelve servo objects can be created on most boards
+boolean goesForward = false;
+
+long duration; // variable for the duration of sound wave travel
+int distance;  // variable for the distance measurement
+
+int program;
+
+Servo servo_motor; //servo name
 
 void setup()
 {
   Serial.begin(9600);
-
   Serial.println("IR Receiver Button Decode");
   irrecv.enableIRIn();
 
-  myservo.attach(servoPin); // attaches the servo on pin 9 to the servo object
+  pinMode(trigPin, OUTPUT);                         // Sets the trigPin as an OUTPUT
+  pinMode(echoPin, INPUT);                          // Sets the echoPin as an INPUT
+  Serial.begin(9600);                               // // Serial Communication is starting with 9600 of baudrate speed
+  Serial.println("Ultrasonic Sensor HC-SR04 Test"); // print some text in Serial Monitor
 
-  // Setup ultrasonic sensor
-  pinMode(trigPin, OUTPUT);
-  pinMode(echoPin, INPUT);
-
-  //Set initial motor pins
-  pinMode(motor1pin1, OUTPUT);
-  pinMode(motor1pin2, OUTPUT);
-  pinMode(motor2pin1, OUTPUT);
-  pinMode(motor2pin2, OUTPUT);
-
-  // Set initial direction
-  digitalWrite(motor1pin1, LOW);
-  digitalWrite(motor1pin2, LOW);
-  digitalWrite(motor2pin1, LOW);
-  digitalWrite(motor2pin2, LOW);
+  pinMode(RightForward, OUTPUT);
+  pinMode(LeftForward, OUTPUT);
+  pinMode(LeftBackward, OUTPUT);
+  pinMode(RightBackward, OUTPUT);
+  servo_motor.attach(servoPin); //servo pin
+  servo_motor.write(115);
+  delay(2000);
+  distance = readPing();
+  delay(100);
+  distance = readPing();
+  delay(100);
+  distance = readPing();
+  delay(100);
+  distance = readPing();
+  delay(100);
 }
-void translateIR()
 
+void loop()
 {
-  Serial.println(results.value);
+
+  if (irrecv.decode(&results))
+  {
+    Serial.println("Ultrasonic Sensor HC-SR04 Test"); // print some text in Serial Monitor
+    translateIR();
+    irrecv.resume();
+  }
+
+  if (program == 1)
+  {
+    int distanceRight = 0;
+    int distanceLeft = 0;
+    delay(50);
+    if (distance <= 20)
+    {
+      moveStop(); // obstacle probably on the route forward, so stop
+      delay(300);
+      moveBackward();
+      delay(400);
+      moveStop();
+      delay(300);
+      distanceRight = lookRight();
+      delay(300);
+      distanceLeft = lookLeft();
+      delay(300);
+      if (distance >= distanceLeft)
+      {
+        turnRight(); // calculate in which direction the obstacle is more far
+        moveStop();
+      }
+      else
+      {
+        turnLeft();
+        moveStop();
+      }
+    }
+    else
+    {
+      moveForward();
+    }
+    distance = readPing();
+  }
+}
+
+void translateIR()
+{
 
   switch (results.value)
-
   {
-
-  case 10042053:
-    Serial.println("FORWARD");
-
-    leftMotor.Drive(1);
-    rightMotor.Drive(1);
+  case 10063983:
+    Serial.println("PROGRAM AUTOMAT");
+    program = 1;
+    break;
+  case 10041543:
+    Serial.println("EXIT");
+    program = 0;
+    moveStop();
     break;
 
-  case 10091013:
-    Serial.println("RIGHT");
-
-    leftMotor.Drive(1);
-    rightMotor.Drive(0);
+  case 0xFFFFFFFF:
+    Serial.println(" REPEAT");
     break;
-
-  case 10058373:
-    Serial.println("LEFT");
-
-    leftMotor.Drive(0);
-    rightMotor.Drive(1);
-    break;
-
-  case 10074693:
-    Serial.println("BACK");
-
-    leftMotor.Drive(-1);
-    rightMotor.Drive(-1);
-    break;
-
-  case 10031343:
-    Serial.println("OK");
-
-    leftMotor.Drive(1);
-    rightMotor.Drive(-1);
-    break;
-
   default:
-    Serial.println("OTHER BTN");
 
-    leftMotor.Drive(0);
-    rightMotor.Drive(0);
     Serial.println(results.value);
   }
 
   delay(500);
 }
 
-void calcDistance()
+int lookRight()
 {
+  servo_motor.write(50);
+  delay(500);
+  int distance = readPing();
+  delay(100);
+  servo_motor.write(115);
+  return distance;
+}
+
+int lookLeft()
+{
+  servo_motor.write(170);
+  delay(500);
+  int distance = readPing();
+  delay(100);
+  servo_motor.write(115);
+  return distance;
+  delay(100);
+}
+
+int readPing()
+{
+  delay(70);
+
+  // Clears the trigPin condition
   digitalWrite(trigPin, LOW);
   delayMicroseconds(2);
+  // Sets the trigPin HIGH (ACTIVE) for 10 microseconds
   digitalWrite(trigPin, HIGH);
   delayMicroseconds(10);
   digitalWrite(trigPin, LOW);
-
+  // Reads the echoPin, returns the sound wave travel time in microseconds
   duration = pulseIn(echoPin, HIGH);
   // Calculating the distance
-  distance = duration * 0.034 / 2; // Speed of sound wave divided by 2 (go and back)
-
+  int cm = duration * 0.034 / 2; // Speed of sound wave divided by 2 (go and back)
+  // Displays the distance on the Serial Monitor
   Serial.print("Distance: ");
   Serial.print(distance);
   Serial.println(" cm");
+
+  if (cm == 0)
+  {
+    cm = 250;
+  }
+
+  return cm;
 }
 
-void loop()
+void moveStop()
 {
+  digitalWrite(RightForward, LOW);
+  digitalWrite(LeftForward, LOW);
+  digitalWrite(RightBackward, LOW);
+  digitalWrite(LeftBackward, LOW);
+}
 
-  calcDistance();
-
-  Serial.println(leftMotor.isRun());
-  Serial.println(rightMotor.isRun());
-
-  if (distance < 20)
+void moveForward()
+{
+  if (!goesForward)
   {
-    Serial.println("Danger!!!");
-    Serial.println("Stop motors...");
-
-    leftMotor.Drive(0);
-    rightMotor.Drive(0);
-
-    delay(1000);
-
-    Serial.println("Turn back the car...");
-
-    leftMotor.Drive(1);
-    rightMotor.Drive(-1);
-
-    delay(300);
-
-    Serial.println("Go forrward");
-
-    leftMotor.Drive(1);
-    rightMotor.Drive(1);
+    goesForward = true;
+    digitalWrite(LeftForward, HIGH);
+    digitalWrite(RightForward, HIGH);
+    digitalWrite(LeftBackward, LOW);
+    digitalWrite(RightBackward, LOW);
   }
-  //  if (distance < 20) {
-  //    Serial.println("Danger!!!");
-  //    Serial.println("Stop motors...");
-  //
-  //    leftMotor.Drive(0);
-  //    rightMotor.Drive(0);
-  //
-  //    Serial.println("Map location...");
-  //
-  //    int maxPos = 0;Q
-  //    int max = 0;
-  //
-  //    for (pos = 0; pos <= 180; pos += 1) {
-  //      // in steps of 1 degree
-  //      myservo.write(pos);              // tell servo to go to position in variable 'pos'
-  //      delay(15);                       // waits 15ms for the servo to reach the position
-  //      calcDistance();
-  //
-  //      if (distance > max) {
-  //        max = distance;
-  //        maxPos = pos;
-  //      }
-  //    }
-  //
-  //    for (pos = 180; pos >= 0; pos -= 1) { // goes from 180 degrees to 0 degrees
-  //      myservo.write(pos);              // tell servo to go to position in variable 'pos'
-  //      delay(15);                       // waits 15ms for the servo to reach the position
-  //      calcDistance();
-  //      if (distance > max) {
-  //        max = distance;
-  //        maxPos = pos;
-  //      }
-  //    }
-  //
-  //    myservo.write(maxPos);              // tell servo to go to position in variable 'pos'
-  //    delay(1000);                       // waits 15ms for the servo to reach the position
-  //    Serial.println("MAX");
-  //    Serial.println(max);
-  //    Serial.println(maxPos);
-  //  }
+}
 
-  if (irrecv.decode(&results))
-  {
-    translateIR();
-    irrecv.resume();
-  }
+void moveBackward()
+{
+  goesForward = false;
+  digitalWrite(LeftBackward, HIGH);
+  digitalWrite(RightBackward, HIGH);
+  digitalWrite(LeftForward, LOW);
+  digitalWrite(RightForward, LOW);
+}
+
+void turnRight()
+{
+  digitalWrite(LeftForward, HIGH);
+  digitalWrite(RightBackward, HIGH);
+  digitalWrite(LeftBackward, LOW);
+  digitalWrite(RightForward, LOW);
+  delay(300);
+  digitalWrite(LeftForward, HIGH);
+  digitalWrite(RightForward, HIGH);
+  digitalWrite(LeftBackward, LOW);
+  digitalWrite(RightBackward, LOW);
+}
+
+void turnLeft()
+{
+  digitalWrite(LeftBackward, HIGH);
+  digitalWrite(RightForward, HIGH);
+  digitalWrite(LeftForward, LOW);
+  digitalWrite(RightBackward, LOW);
+  delay(300);
+  digitalWrite(LeftForward, HIGH);
+  digitalWrite(RightForward, HIGH);
+  digitalWrite(LeftBackward, LOW);
+  digitalWrite(RightBackward, LOW);
 }
